@@ -1,0 +1,9 @@
+const path = require('path');
+require('ts-node/register'); // Enable TypeScript support
+
+module.exports = {
+  config: path.resolve('src', 'databases', 'sequelize', 'config', 'config.js'), // Updated config path
+  'models-path': path.resolve('src', 'databases', 'sequelize', 'models'), // Updated models path
+  'seeders-path': path.resolve('src', 'databases', 'sequelize', 'seeders'), // Updated seeders path
+  'migrations-path': path.resolve('src', 'databases', 'sequelize', 'migrations'), // Updated migrations path
+};
