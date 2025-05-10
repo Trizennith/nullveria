@@ -1,0 +1,54 @@
+services:
+  init-sql:
+    image: alpine:3.21
+    container_name: init-sql
+    working_dir: /app
+    volumes:
+      - ./init-sql:/app/init-sql
+      - ./.env:/app/.env
+    environment:
+      MYSQL_DATABASE_SHADOW: ${MYSQL_DATABASE_SHADOW}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    entrypoint: >
+      sh -c "
+        echo $MYSQL_DATABASE_SHADOW &&
+        apk add --no-cache gettext mariadb-connector-c-dev mysql-client &&
+
+        until mysqladmin ping -h mysql -u root -p$MYSQL_ROOT_PASSWORD --skip-ssl --silent; do
+        echo 'Waiting for MySQL to be ready...';
+        sleep 2; done &&
+
+        chmod +x ./init-sql/generate-init-sql.sh &&
+        cd init-sql &&
+        . generate-init-sql.sh &&
+        cat init.sql &&
+
+        mariadb -h mysql --user=root --password=$MYSQL_ROOT_PASSWORD --skip-ssl $MYSQL_DATABASE < /app/init-sql/init.sql &&
+        rm -rf /app/init-sql/init.sql
+        "
+    depends_on:
+      - mysql
+  mysql:
+    image: mysql:8.4 #😭Please do not upgrade this to 9.x.x,
+    container_name: nullveria.mysql.dev
+    restart: always
+    ports:
+      - '3308:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    command: ["mysqld", "--mysql-native-password=ON"]
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  mysql_data:
