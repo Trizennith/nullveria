@@ -12,7 +12,10 @@
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
-      "src/*": ["src/*"]
+      "src/*": ["src/*"],
+      "@api/*": ["src/api/*"],
+      "@databases/*": ["src/databases/*"],
+      "@commons/*": ["src/common/*"]
     },
     "incremental": true,
     "skipLibCheck": true,
@@ -24,5 +27,5 @@
     "strict": true,
     "esModuleInterop": true
   },
-  "include": ["src/**/*", "jest.config.js", "src/auth/dto/response/signup.dto.ts"]
+  "include": ["src/**/*", "jest.config.js", "src/api/auth/dto/response/signup.dto.ts", "test"]
 }

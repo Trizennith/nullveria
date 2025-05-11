@@ -2,11 +2,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { PrismaService } from '../../databases/prisma/prisma.service';
+import { PrismaService } from '@databases/prisma/prisma.service';
 import { AppModule } from 'src/app.module';
 import { authPasswordHasher } from 'src/common/libs/hasher';
-import { LoginResponseDto } from '../dto/response/login.dto';
-import { UserSessionsResponseDto } from '../dto/response/sessions-data';
+import { LoginResponseDto } from '@api/auth/dto/response/login.dto';
+import { UserSessionsResponseDto } from '@api/auth/dto/response/sessions-data';
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
@@ -34,6 +34,8 @@ describe('AuthController (e2e)', () => {
     });
 
     const signupResponse = await request(app.getHttpServer()).post('/auth/signup').send({
+      username: 'newuser123',
+      phoneNumber: '32453453',
       email: 'new.user@example.com',
       password: 'password123',
       firstName: 'New',
@@ -52,6 +54,10 @@ describe('AuthController (e2e)', () => {
       });
 
       if (user) {
+        await prisma.userAddress.deleteMany({
+          where: { userId: user.id },
+        });
+
         await prisma.userSession.deleteMany({
           where: { userId: user.id },
         });
@@ -65,6 +71,8 @@ describe('AuthController (e2e)', () => {
     await deleteAll();
     await prisma.user.create({
       data: {
+        userName: 'lmao1234',
+        phoneNumber: '23432324324',
         email: 'john.doe@example.com',
         password: await authPasswordHasher('password'), // In a real-world scenario, ensure this is hashed
         firstName: 'John',

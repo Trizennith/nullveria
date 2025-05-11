@@ -17,17 +17,18 @@ import { AuthGuard } from './auth.guard';
 import { AuthenticatedRequest } from './interfaces/auth-request.type'; // Import the custom type
 import { Request as ExpressRequest } from 'express'; // Import Express Request type
 import { UserSessionsResponseDto } from './dto/response/sessions-data';
+import { ZodError } from 'zod';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('signup')
+  @Post('sign-up')
   async register(@Body() body: any) {
     const parsed = RegisterDtoSchema.safeParse(body);
 
     if (!parsed.success) {
-      throw new BadRequestException(parsed.error.errors);
+      throw new ZodError(parsed.error.errors);
     }
 
     const registerDto: RegisterDto = parsed.data;
@@ -36,15 +37,17 @@ export class AuthController {
       registerDto.password,
       registerDto.firstName,
       registerDto.lastName,
+      registerDto.username,
+      registerDto.phoneNumber,
     );
   }
 
-  @Post('signin')
+  @Post('login')
   async login(@Body() body: any, @Request() req: ExpressRequest): Promise<LoginResponseDto> {
     const parsed = LoginDtoSchema.safeParse(body);
 
     if (!parsed.success) {
-      throw new BadRequestException(parsed.error.errors);
+      throw new ZodError(parsed.error.errors);
     }
 
     const loginDto: LoginDto = parsed.data;
@@ -97,8 +100,12 @@ export class AuthController {
           userAgent: session.userAgent,
           totalActiveLogin: session.totalActiveLogin,
           loginData: session.loginData?.map((data) => ({
+            id: data.id,
+            refreshToken: data.refreshToken,
             loginAt: data.loginAt,
             refreshTokenExpiry: data.refreshTokenExpiry,
+            sessionId: data.sessionId,
+            accessToken: data.accessToken,
             logoutTime: data.logoutTime,
             metadata: data.metadata
               ? {

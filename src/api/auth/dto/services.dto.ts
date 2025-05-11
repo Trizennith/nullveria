@@ -3,7 +3,7 @@ export interface SessionData {
   refreshToken: string;
 }
 
-export interface LoginResult {
+export interface LoginResponse {
   email: string;
   firstName: string;
   lastName: string;
@@ -14,13 +14,17 @@ export interface LoginResult {
   sessionData: SessionData;
 }
 
-export interface SessionsResult {
+export interface SessionResponse {
   lastLoginAt: Date | null | undefined;
   loginCount: number | null | undefined;
   userAgent: string | null | undefined;
   totalActiveLogin: number | null | undefined;
   loginData:
     | Array<{
+        id: string | null | undefined;
+        refreshToken: string | null | undefined;
+        sessionId: string | null | undefined;
+        accessToken: string | null | undefined;
         loginAt: Date;
         refreshTokenExpiry: Date;
         logoutTime: Date | null | undefined;

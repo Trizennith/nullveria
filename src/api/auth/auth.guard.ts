@@ -1,4 +1,11 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Request } from 'express';
 import { AuthService } from './auth.service';
 
@@ -16,21 +23,16 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException();
     }
 
-    try {
-      const payload = this.authService.verifyJwtToken(token);
-      const session = await this.authService.validateSessionWithDB(
-        payload.userID,
-        payload.sessionID,
-      );
+    const payload = this.authService.verifyJwtToken(token);
+    const session = await this.authService.validateSessionWithDB(payload.userID, payload.sessionID);
 
-      if (!session) {
-        throw new UnauthorizedException('Invalid session');
-      }
-
-      request['user'] = payload;
-    } catch {
-      throw new UnauthorizedException();
+    if (!session) {
+      throw new HttpException('Invalid session ID', HttpStatus.BAD_REQUEST, {
+        cause: new Error('Invalid session ID'),
+        description: 'Invalid session ID',
+      });
     }
+    request['user'] = payload;
 
     return true;
   }

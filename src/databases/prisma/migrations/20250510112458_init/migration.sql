@@ -1,6 +1,10 @@
 -- CreateTable
 CREATE TABLE `User` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `userName` VARCHAR(191) NOT NULL,
+    `phoneNumber` VARCHAR(191) NULL,
+    `phonneNumberVerified` BOOLEAN NOT NULL DEFAULT false,
+    `emailVerified` BOOLEAN NOT NULL DEFAULT false,
     `firstName` VARCHAR(191) NOT NULL,
     `lastName` VARCHAR(191) NOT NULL,
     `fullName` VARCHAR(191) NOT NULL,
@@ -11,6 +15,8 @@ CREATE TABLE `User` (
     `isVerified` BOOLEAN NOT NULL DEFAULT false,
     `totalLogins` INTEGER NOT NULL DEFAULT 0,
 
+    UNIQUE INDEX `User_userName_key`(`userName`),
+    UNIQUE INDEX `User_phoneNumber_key`(`phoneNumber`),
     UNIQUE INDEX `User_email_key`(`email`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -33,6 +39,8 @@ CREATE TABLE `UserAddress` (
 -- CreateTable
 CREATE TABLE `UserSession` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `sessionId` VARCHAR(191) NOT NULL,
+    `accessToken` TEXT NOT NULL,
     `userId` INTEGER NOT NULL,
     `loginTime` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `refreshToken` TEXT NULL,
@@ -43,6 +51,7 @@ CREATE TABLE `UserSession` (
     `location` VARCHAR(191) NULL,
     `additionalInfo` JSON NULL,
 
+    UNIQUE INDEX `UserSession_sessionId_key`(`sessionId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 

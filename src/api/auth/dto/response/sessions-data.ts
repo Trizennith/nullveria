@@ -6,6 +6,7 @@ export const UserSessionsResponseDtoSchema = z.object({
     description: z.string().optional(),
   }),
   data: z.object({
+    sessionID: z.string().optional().nullable(),
     lastLoginAt: z.date().optional().nullable(),
     loginCount: z.number().optional().nullable(),
     userAgent: z.string().optional().nullable(),
@@ -13,6 +14,8 @@ export const UserSessionsResponseDtoSchema = z.object({
     loginData: z
       .array(
         z.object({
+          id: z.string().optional().nullable(),
+          refreshToken: z.string().optional().nullable(),
           loginAt: z.date(),
           refreshTokenExpiry: z.date(),
           logoutTime: z.date().optional().nullable(),

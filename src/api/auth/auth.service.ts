@@ -1,12 +1,14 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { PrismaService } from '../databases/prisma/prisma.service';
+import { PrismaService } from '../../databases/prisma/prisma.service';
 import type { User, UserSession } from '@prisma/client';
 import { JwtPayload } from './interfaces/auth-request.type'; // Import the JwtPayload type
 import { authPasswordHasher } from 'src/common/libs/hasher';
 import { AuthConstants } from './constants';
-import { LoginResult, SessionsResult } from './dto/services.dto';
+import { LoginResponse, SessionResponse } from './dto/services.dto';
+import { ROLE } from './constants/role';
+import Generator from 'src/common/utils/generator';
 
 @Injectable()
 export class AuthService {
@@ -20,10 +22,15 @@ export class AuthService {
     password: string,
     firstName: string,
     lastName: string,
+    userName: string,
+    phoneNumber?: string,
   ): Promise<User> {
     const hashedPassword = await authPasswordHasher(password);
     return this.prisma.user.create({
       data: {
+        phoneNumber,
+        role: ROLE.USER,
+        userName: userName,
         email,
         password: hashedPassword,
         firstName,
@@ -38,7 +45,7 @@ export class AuthService {
     password: string,
     ipAddress: string | undefined,
     userAgent: string | undefined,
-  ): Promise<LoginResult> {
+  ): Promise<LoginResponse> {
     const user = await this.validateUser(email, password);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
@@ -47,6 +54,8 @@ export class AuthService {
     const userSession = await this.prisma.userSession.create({
       data: {
         userId: user.id,
+        sessionId: Generator.generateUniqueID(), // Generate or assign a valid sessionId here
+        accessToken: '', // Generate or assign a valid accessToken here
         refreshTokenExpiry: new Date(
           Date.now() + AuthConstants.REFRESH_TOKEN_DAYS_EXPIRY * 24 * 60 * 60 * 1000,
         ),
@@ -144,10 +153,11 @@ export class AuthService {
     }
   }
 
-  async getSessions(userId_: string): Promise<SessionsResult> {
+  async getSessions(userId_: string): Promise<SessionResponse> {
     const sessions = await this.prisma.userSession.findMany({
       where: { userId: parseInt(userId_, 10) },
       select: {
+        id: true,
         loginTime: true,
         refreshTokenExpiry: true,
         logoutTime: true,
@@ -155,6 +165,9 @@ export class AuthService {
         userAgent: true,
         location: true,
         additionalInfo: true,
+        refreshToken: true,
+        sessionId: true,
+        accessToken: true,
       },
     });
 
@@ -168,6 +181,10 @@ export class AuthService {
       userAgent: sessions[0].userAgent || undefined,
       totalActiveLogin: sessions.filter((session) => !session.logoutTime).length,
       loginData: sessions.map((session) => ({
+        id: session.id.toString(),
+        refreshToken: session.refreshToken,
+        sessionId: session.sessionId,
+        accessToken: session.accessToken,
         loginAt: session.loginTime,
         refreshTokenExpiry: session.refreshTokenExpiry,
         logoutTime: session.logoutTime || undefined,
