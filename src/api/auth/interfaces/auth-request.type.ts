@@ -1,12 +1,19 @@
 import { Request } from 'express';
 
 export interface JwtPayload {
-  sessionID: string;
-  email: string;
   userID: string;
-  role: string; // Optional role field
+  role: 'user' | 'admin' | 'super_admin'; // Optional role field
+  expInSeconds: number;
+  ctxHash: string;
 }
 
 export interface AuthenticatedRequest extends Request {
   user?: JwtPayload; // Add the user property with JwtPayload type
+}
+
+export interface LoginDataDto {
+  email: string;
+  password: string;
+  ipAddress: string | null | undefined;
+  userAgent: string | null | undefined;
 }

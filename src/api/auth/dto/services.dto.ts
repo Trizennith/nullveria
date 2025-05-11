@@ -3,41 +3,42 @@ export interface SessionData {
   refreshToken: string;
 }
 
-export interface LoginResponse {
+export type UserRoleTypes = 'user' | 'admin' | 'super_admin';
+
+export interface LoginResultDto {
+  jwtRefreshTokenFingerPrint: string;
+  jwtRawContext: string;
   email: string;
   firstName: string;
   lastName: string;
   fullName: string;
-  role: 'user' | 'admin' | 'super_admin';
+  role: UserRoleTypes;
   isActive: boolean;
   isVerified: boolean;
   sessionData: SessionData;
 }
 
-export interface SessionResponse {
+export interface LoginDataDto {
+  id: string | null | undefined;
+  sessionId: string;
+  fingerprint: string;
+  hashedToken: string;
+  revoked: boolean;
+  loginTime: Date;
+  logoutTime: Date | null | undefined;
+  ipAddress: string | null | undefined;
+  userAgent: string | null | undefined;
+  location: string | null | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+  metadata: any | null | undefined;
+  expiresAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface UserSessionsResultDto {
   lastLoginAt: Date | null | undefined;
   loginCount: number | null | undefined;
-  userAgent: string | null | undefined;
   totalActiveLogin: number | null | undefined;
-  loginData:
-    | Array<{
-        id: string | null | undefined;
-        refreshToken: string | null | undefined;
-        sessionId: string | null | undefined;
-        accessToken: string | null | undefined;
-        loginAt: Date;
-        refreshTokenExpiry: Date;
-        logoutTime: Date | null | undefined;
-        metadata:
-          | {
-              ipAddress: string | null | undefined;
-              userAgent: string | null | undefined;
-              location: string | null | undefined;
-              additionalInfo: object | null | undefined;
-            }
-          | null
-          | undefined;
-      }>
-    | null
-    | undefined;
+  loginData: Array<LoginDataDto> | null | undefined;
 }

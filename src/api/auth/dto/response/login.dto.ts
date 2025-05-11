@@ -24,3 +24,13 @@ export const LoginResponseDtoSchema = z.object({
 
 export type SessionData = z.infer<typeof SessionData>;
 export type LoginResponseDto = z.infer<typeof LoginResponseDtoSchema>;
+
+export interface LoginSessionResponse {
+  status: {
+    code: number;
+    message: string;
+    description?: string;
+  };
+  accessToken: string;
+  refreshToken: string;
+}

@@ -31,32 +31,48 @@ model User {
   address              UserAddress?
   totalLogins          Int           @default(0)
   loginData            UserSession[]
+  updatedAt            DateTime      @updatedAt
+  createdAt            DateTime      @default(now())
 }
 
 model UserAddress {
-  id         Int     @id @default(autoincrement())
-  userId     Int     @unique
+  id         Int      @id @default(autoincrement())
+  userId     Int      @unique
   address1   String
   address2   String?
   city       String
   state      String
   postalCode String
   country    String
-  user       User    @relation(fields: [userId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+}
+
+model RefreshToken {
+  id            String      @id @default(uuid())
+  userSessionID Int         @unique
+  fingerprint   String
+  hashedToken   String      @unique // SHA-256 hash
+  expiresAt     DateTime
+  revoked       Boolean     @default(false)
+  UserSession   UserSession @relation(fields: [userSessionID], references: [id])
+  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime    @default(now())
 }
 
 model UserSession {
-  id                 Int       @id @default(autoincrement())
-  sessionId          String    @unique
-  accessToken        String    @db.Text
-  userId             Int
-  loginTime          DateTime  @default(now())
-  refreshToken       String?   @db.Text
-  refreshTokenExpiry DateTime
-  logoutTime         DateTime?
-  ipAddress          String?
-  userAgent          String?
-  location           String?
-  additionalInfo     Json?
-  User               User      @relation(fields: [userId], references: [id])
+  id             Int           @id @default(autoincrement())
+  sessionId      String        @unique
+  userId         Int
+  loginTime      DateTime      @default(now())
+  logoutTime     DateTime?
+  ipAddress      String?
+  userAgent      String?
+  location       String?
+  additionalInfo Json?
+  User           User          @relation(fields: [userId], references: [id])
+  refreshToken   RefreshToken? @relation
+  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime      @default(now())
 }

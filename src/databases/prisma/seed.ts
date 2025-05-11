@@ -6,9 +6,9 @@ const prisma = new PrismaClient();
 
 async function main() {
   // Seed Admin User
-  const adminUser = await prisma.user.create({
+  await prisma.user.create({
     data: {
-      userName: 'realuser',
+      userName: '43563456',
       phoneNumber: '0952344325',
       firstName: 'Admin',
       lastName: 'User',
@@ -72,6 +72,23 @@ async function main() {
     },
   });
 
+  // Add a new user with a 'developer' role
+  const developerUser = await prisma.user.create({
+    data: {
+      userName: 'developer_user',
+      phoneNumber: '1234567890',
+      firstName: 'Developer',
+      lastName: 'User',
+      fullName: 'Developer User',
+      email: 'developer@example.com',
+      password: await authPasswordHasher('developer_password'), // Replace with a hashed password
+      role: 'developer',
+      isActive: true,
+      isVerified: true,
+      totalLogins: 1,
+    },
+  });
+
   // Seed User Address for Regular User
   await prisma.userAddress.create({
     data: {
@@ -88,30 +105,40 @@ async function main() {
   // Seed User Session for Regular User
   await prisma.userSession.create({
     data: {
+      userId: moderatorUser.id,
       sessionId: Generator.generateUniqueID(),
-      userId: regularUser.id,
-      refreshToken: 'sample_refresh_token',
-      refreshTokenExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-      accessToken: 'sample_access_token', // Add the required accessToken property
-      ipAddress: '127.0.0.1',
+      refreshToken: {
+        create: {
+          fingerprint: Generator.generateUniqueID(),
+          hashedToken: Generator.generateUniqueID(),
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+          revoked: false,
+        },
+      },
+      ipAddress: '192.168.1.1',
       userAgent: 'Mozilla/5.0',
-      location: 'New York, USA',
-      additionalInfo: { metadata: 'Sample metadata' },
+      location: 'Los Angeles, USA',
+      additionalInfo: { metadata: 'Moderator metadata' },
     },
   });
 
   // Seed User Session for Admin User
   await prisma.userSession.create({
     data: {
-      userId: adminUser.id,
+      userId: moderatorUser.id,
       sessionId: Generator.generateUniqueID(),
-      accessToken: 'sample_access_token', // Add the required accessToken property
-      refreshToken: 'admin_refresh_token',
-      refreshTokenExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-      ipAddress: '127.0.0.1',
+      refreshToken: {
+        create: {
+          fingerprint: Generator.generateUniqueID(),
+          hashedToken: Generator.generateUniqueID(),
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+          revoked: false,
+        },
+      },
+      ipAddress: '192.168.1.1',
       userAgent: 'Mozilla/5.0',
-      location: 'Admin Location',
-      additionalInfo: { metadata: 'Admin metadata' },
+      location: 'Los Angeles, USA',
+      additionalInfo: { metadata: 'Moderator metadata' },
     },
   });
 
@@ -133,9 +160,58 @@ async function main() {
     data: {
       userId: moderatorUser.id,
       sessionId: Generator.generateUniqueID(),
-      accessToken: 'sample_access_token', // Add the required accessToken property
-      refreshToken: 'moderator_refresh_token',
-      refreshTokenExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+      refreshToken: {
+        create: {
+          fingerprint: Generator.generateUniqueID(),
+          hashedToken: Generator.generateUniqueID(),
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+          revoked: false,
+        },
+      },
+      ipAddress: '192.168.1.1',
+      userAgent: 'Mozilla/5.0',
+      location: 'Los Angeles, USA',
+      additionalInfo: { metadata: 'Moderator metadata' },
+    },
+  });
+
+  // Seed User Address for Developer User
+  await prisma.userAddress.create({
+    data: {
+      userId: developerUser.id,
+      address1: '789 Tech Lane',
+      address2: 'Suite 101',
+      city: 'San Francisco',
+      state: 'CA',
+      postalCode: '94103',
+      country: 'USA',
+    },
+  });
+
+  // Create RefreshToken for Developer User
+  await prisma.refreshToken.create({
+    data: {
+      userSessionID: developerUser.id, // Link to the user session
+      fingerprint: Generator.generateUniqueID(),
+      hashedToken: Generator.generateUniqueID(),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+      revoked: false,
+    },
+  });
+
+  // Seed User Session for Developer User
+  await prisma.userSession.create({
+    data: {
+      userId: moderatorUser.id,
+      sessionId: Generator.generateUniqueID(),
+      refreshToken: {
+        create: {
+          fingerprint: Generator.generateUniqueID(),
+          hashedToken: Generator.generateUniqueID(),
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+          revoked: false,
+        },
+      },
       ipAddress: '192.168.1.1',
       userAgent: 'Mozilla/5.0',
       location: 'Los Angeles, USA',

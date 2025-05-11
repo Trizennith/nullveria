@@ -1,6 +1,6 @@
 import { Controller, Get, Query, Request, UseGuards } from '@nestjs/common';
 import { TestAppService } from './test-app.service';
-import { AuthGuard } from 'src/api/auth/auth.guard';
+import { JwtContextGuard } from 'src/api/auth/auth.guard';
 
 @Controller('test-app')
 export class TestAppController {
@@ -12,7 +12,7 @@ export class TestAppController {
   }
 
   @Get('users')
-  @UseGuards(AuthGuard)
+  @UseGuards(JwtContextGuard)
   async findAllUsers() {
     return this.testAppService.findAllUsers();
   }

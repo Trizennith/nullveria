@@ -1,6 +1,16 @@
 import { v4 as uuidv4 } from 'uuid';
+import * as crypto from 'crypto';
+import { createHash } from 'crypto';
 
 export default class Generator {
+  static hash(context: string): string {
+    return createHash('sha256').update(context).digest('hex');
+  }
+
+  static generateUserContext(): string {
+    return crypto.randomBytes(32).toString('hex'); // 64-char random string
+  }
+
   static generateUniqueID(): string {
     return uuidv4();
   }
