@@ -6,8 +6,8 @@ export interface SessionData {
 export type UserRoleTypes = 'user' | 'admin' | 'super_admin';
 
 export interface LoginResultDto {
-  jwtRefreshTokenFingerPrint: string;
-  jwtRawContext: string;
+  jwtRefreshTokenFgp: string;
+  jwtRawFgpCtx: string;
   email: string;
   firstName: string;
   lastName: string;

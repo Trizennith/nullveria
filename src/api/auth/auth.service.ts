@@ -3,11 +3,11 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../databases/prisma/prisma.service';
 import type { User } from '@prisma/client';
-import { JwtPayload, LoginDataDto } from './interfaces/auth-request.type'; // Import the JwtPayload type
+import { JwtPayload, LoginDataDto } from './dto/auth-request.type'; // Import the JwtPayload type
 import { authPasswordHasher } from 'src/common/libs/hasher';
 import { AuthConstants } from './constants';
 import { LoginResultDto, UserSessionsResultDto, UserRoleTypes } from './dto/services.dto';
-import { ROLE } from './constants/role';
+import { ROLE } from './constants/constant';
 import Generator from 'src/common/utils/generator';
 
 @Injectable()
@@ -95,8 +95,8 @@ export class AuthService {
     });
 
     return {
-      jwtRefreshTokenFingerPrint: fingerPrint,
-      jwtRawContext,
+      jwtRefreshTokenFgp: fingerPrint,
+      jwtRawFgpCtx: jwtRawContext,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,

@@ -1,31 +1,24 @@
-import { z } from 'zod';
-export const SessionData = z.object({
-  accessToken: z.string(),
-  refreshToken: z.string(),
-});
+import { StandardReponseData } from 'src/common/utils/base-types';
 
-export const LoginResponseDtoSchema = z.object({
-  status: z.object({
-    code: z.number(),
-    message: z.string(),
-    description: z.string().optional(),
-  }),
-  data: z.object({
-    email: z.string().email(),
-    firstName: z.string(),
-    lastName: z.string(),
-    fullName: z.string(),
-    role: z.enum(['user', 'admin', 'super_admin']),
-    isActive: z.boolean().optional(),
-    isVerified: z.boolean().optional(),
-    sessionData: SessionData,
-  }),
-});
+export type SessionData = {
+  accessToken: string;
+  refreshToken: string;
+};
 
-export type SessionData = z.infer<typeof SessionData>;
-export type LoginResponseDto = z.infer<typeof LoginResponseDtoSchema>;
+export type LoginResponseDto = {
+  data: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    role: 'user' | 'admin' | 'super_admin';
+    isActive?: boolean;
+    isVerified?: boolean;
+    sessionData: SessionData;
+  };
+} & StandardReponseData;
 
-export interface LoginSessionResponse {
+export type LoginSessionResponse = {
   status: {
     code: number;
     message: string;
@@ -33,4 +26,4 @@ export interface LoginSessionResponse {
   };
   accessToken: string;
   refreshToken: string;
-}
+};

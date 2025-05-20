@@ -6,7 +6,7 @@ import { PrismaService } from '@databases/prisma/prisma.service';
 import { AppModule } from 'src/app.module';
 import { authPasswordHasher } from 'src/common/libs/hasher';
 import { LoginResponseDto } from '@api/auth/dto/response/login.dto';
-import { UserSessionsResponseDto } from '@api/auth/dto/response/sessions-data';
+import { UserSessionsResponseBody } from '@api/auth/dto/response/sessions-data';
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
@@ -93,7 +93,7 @@ describe('AuthController (e2e)', () => {
       await request(app.getHttpServer())
         .get('/auth/auth-sessions')
         .set('Authorization', `Bearer ${accessToken}`)
-    ).body as UserSessionsResponseDto;
+    ).body as UserSessionsResponseBody;
 
     expect(responseData.data.loginData).toBeInstanceOf(Array);
     expect(responseData.data.totalActiveLogin).toBeGreaterThan(0); // Ensure it has values

@@ -1,10 +1,6 @@
+import { StandardReponseData } from 'src/common/utils/base-types';
 import { UserSessionsResultDto } from '../services.dto';
 
-export interface UserSessionsResponseBody {
-  status: {
-    code: number;
-    message: string;
-    description?: string;
-  };
+export type UserSessionsResponseBody = {
   data: UserSessionsResultDto;
-}
+} & StandardReponseData;

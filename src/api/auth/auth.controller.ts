@@ -11,15 +11,16 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDtoSchema, LoginDto } from './dto/request/login.dto';
-import { RegisterDtoSchema, RegisterDto } from './dto/response/signup.dto';
 import { RefreshTokenDtoSchema } from './dto/request/refresh-token';
 import { LoginResponseDto } from './dto/response/login.dto';
-import { AuthenticatedRequest } from './interfaces/auth-request.type'; // Import the custom type
+import { AuthenticatedRequest } from './dto/auth-request.type'; // Import the custom type
 import { Request as ExpressRequest, Response as ExpressResponse } from 'express'; // Import Express Request and Response types
 import { ZodError } from 'zod';
 import * as crypto from 'crypto';
-import { JwtContextGuard } from './auth.guard';
+import { JwtStatelessGuard } from './guards/auth.stateless.guard';
 import { UserSessionsResponseBody } from './dto/response/sessions-data';
+import { RegisterDto, RegisterDtoSchema } from './dto/request/signup.dto';
+import { COOKIE_ATTR_JWT_FINGERPRINT } from './constants/constant';
 
 @Controller('auth')
 export class AuthController {
@@ -27,13 +28,13 @@ export class AuthController {
 
   @Post('sign-up')
   async register(@Body() body: any) {
-    const parsed = RegisterDtoSchema.safeParse(body);
+    const parsed = RegisterDto.safeParse(body);
 
     if (!parsed.success) {
       throw new ZodError(parsed.error.errors);
     }
 
-    const registerDto: RegisterDto = parsed.data;
+    const registerDto: RegisterDtoSchema = parsed.data;
     return this.authService.register(
       registerDto.email,
       registerDto.password,
@@ -68,13 +69,13 @@ export class AuthController {
       fingerprint,
     );
 
-    res.cookie('usr-ctx', returnBody.jwtRawContext, {
+    res.cookie(COOKIE_ATTR_JWT_FINGERPRINT.JWT, returnBody.jwtRawFgpCtx, {
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
     });
 
-    res.cookie('usr-ref-t', returnBody.jwtRefreshTokenFingerPrint, {
+    res.cookie(COOKIE_ATTR_JWT_FINGERPRINT.REFRESH_TOKEN, returnBody.jwtRefreshTokenFgp, {
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
@@ -118,7 +119,7 @@ export class AuthController {
   }
 
   @Get('auth-sessions')
-  @UseGuards(JwtContextGuard)
+  @UseGuards(JwtStatelessGuard)
   async getSessions(@Req() req: AuthenticatedRequest): Promise<UserSessionsResponseBody> {
     try {
       const userId = req.user!.userID; // Access the userId from the JWT payload
@@ -162,14 +163,14 @@ export class AuthController {
   // }
 
   @Post('auth-refresh')
-  @UseGuards(JwtContextGuard)
+  @UseGuards(JwtStatelessGuard)
   async refreshSessionToken(
     @Body() body: any,
     @Req() req: AuthenticatedRequest,
   ): Promise<{ accessToken: string }> {
     const parsed = RefreshTokenDtoSchema.safeParse(body);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const fingerprint = req.cookies?.['usr-ref-t'] as string;
+
+    const fingerprint = req.cookies?.[COOKIE_ATTR_JWT_FINGERPRINT.REFRESH_TOKEN] as string;
     const newFingerprint = this.generateFingerprint(req);
     const payload = req.user!;
 

@@ -27,5 +27,5 @@
     "strict": true,
     "esModuleInterop": true
   },
-  "include": ["src/**/*", "jest.config.js", "src/api/auth/dto/response/signup.dto.ts", "test"]
+  "include": ["src/**/*", "jest.config.js", "test"]
 }
