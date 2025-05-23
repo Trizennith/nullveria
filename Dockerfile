@@ -1,21 +1,38 @@
-# Use Node.js as the base image
-FROM node:22.13.1-alpine3.21
+FROM node:20-alpine AS base
 
-# Set the working directory inside the container
+# Install system dependencies
+RUN apk add --no-cache libc6-compat
+
+COPY docker-entrypoint.sh /app/
+RUN chmod +x /app/docker-entrypoint.sh
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+
+# Install dependencies in a separate stage for caching
+FROM base AS deps
 WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm ci
 
-# Copy package.json and package-lock.json
-COPY package*.json ./
-
-# Install dependencies
-RUN npm install
-
-# Copy the rest of the application code
+# Build stage
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN npx prisma generate
+RUN npm run build
 
+# Production image
+FROM base AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+# Create a non-root user (optional, for security)
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 appuser
+USER appuser
 
-# Expose the application port
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+
 EXPOSE 3000
-
-# Run Prisma commands and start the application
-CMD ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && npm run start:dev"]
+CMD ["node", "dist/src/main"] 

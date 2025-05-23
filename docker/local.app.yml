@@ -1,0 +1,101 @@
+name: nullveria-local-app
+
+services:
+  traefik:
+    image: traefik:v2.10
+    container_name: nullveria.traefik
+    command:
+      - '--api.insecure=true'
+      - '--providers.docker=true'
+      - '--entrypoints.web.address=:80'
+    ports:
+      - '80:80'
+      - '8080:8080' # Optional Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - local_network
+
+  nestjs:
+    build: ../
+    container_name: nullveria.app
+    environment:
+      MYSQL_HOST: ${MYSQL_HOST}
+      MYSQL_PORT: ${MYSQL_PORT}
+      DB_CONNECTION_STRING: ${DB_CONNECTION_STRING}
+      DB_CONNECTION_STRING_SHADOW: ${DB_CONNECTION_STRING_SHADOW}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      IS_DEV_MODE: ${IS_DEV_MODE}
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.nestjs.rule=Host(`api.localhost`)'
+      - 'traefik.http.routers.nestjs.entrypoints=web'
+      - 'traefik.http.services.nestjs.loadbalancer.server.port=3000'
+    depends_on:
+      - mysql
+    networks:
+      - local_network
+
+  mysql:
+    image: mysql:8.4 #😭Please do not upgrade this to 9.x.x,
+    container_name: nullveria.mysql
+    platform: linux/amd64
+    restart: always
+    ports:
+      - '3308:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    command: ['mysqld', '--mysql-native-password=ON']
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - local_network
+
+  prisma-migrate:
+    image: node:20-alpine
+    container_name: nullveria.prisma-migrate
+    working_dir: /app
+    volumes:
+      - ../:/app
+    environment:
+      DB_CONNECTION_STRING: ${DB_CONNECTION_STRING}
+      DB_CONNECTION_STRING_SHADOW: ${DB_CONNECTION_STRING_SHADOW}
+    depends_on:
+      - mysql
+    command: sh -c "npm ci && npx prisma migrate deploy && tail -f /dev/null"
+    networks:
+      - local_network
+
+  local_phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: nulveria.phpmyadmin
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      PMA_HOST: mysql
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    ports:
+      - 3039:80
+    networks:
+      - local_network
+
+volumes:
+  mysql_data:
+    driver: local
+    external: false
+
+networks:
+  local_network:
+    name: local_network
+    driver: bridge
+  web:
+    external: false
