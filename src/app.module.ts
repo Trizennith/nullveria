@@ -3,7 +3,6 @@ import { AppController } from './app.controller';
 import { ConfigModule } from '@nestjs/config';
 import { AppService } from './app.service';
 import { AuthModule } from './api/auth/auth.module';
-import { TestAppModule } from './test-app/test-app.module';
 
 @Module({
   imports: [
@@ -12,7 +11,6 @@ import { TestAppModule } from './test-app/test-app.module';
       envFilePath: '.env',
     }),
     AuthModule,
-    TestAppModule,
   ],
   controllers: [AppController],
   providers: [AppService],

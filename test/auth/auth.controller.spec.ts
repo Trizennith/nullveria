@@ -7,6 +7,7 @@ import { AppModule } from 'src/app.module';
 import { authPasswordHasher } from 'src/common/libs/hasher';
 import { LoginResponseDto } from '@api/auth/dto/response/login.dto';
 import { UserSessionsResponseBody } from '@api/auth/dto/response/sessions-data';
+import { COOKIE_ATTR_JWT_FINGERPRINT } from 'src/api/auth/constants/constant';
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
@@ -33,7 +34,7 @@ describe('AuthController (e2e)', () => {
       where: { email: 'new.user@example.com' },
     });
 
-    const signupResponse = await request(app.getHttpServer()).post('/auth/signup').send({
+    const signupResponse = await request(app.getHttpServer()).post('/auth/sign-up').send({
       username: 'newuser123',
       phoneNumber: '32453453',
       email: 'new.user@example.com',
@@ -56,6 +57,13 @@ describe('AuthController (e2e)', () => {
       if (user) {
         await prisma.userAddress.deleteMany({
           where: { userId: user.id },
+        });
+        const userSessions = await prisma.userSession.findMany({
+          where: { userId: user.id },
+        });
+
+        await prisma.refreshToken.deleteMany({
+          where: { userSessionID: { in: userSessions.map((session) => session.id) } },
         });
 
         await prisma.userSession.deleteMany({
@@ -80,7 +88,7 @@ describe('AuthController (e2e)', () => {
         fullName: 'John Doe', // Combine firstName and lastName for fullName
       },
     });
-    const loginResponse = await request(app.getHttpServer()).post('/auth/signin').send({
+    const loginResponse = await request(app.getHttpServer()).post('/auth/login').send({
       email: 'john.doe@example.com',
       password: 'password',
     });
@@ -100,57 +108,57 @@ describe('AuthController (e2e)', () => {
   });
 
   it('should throw Unauthorized accessing protected route without token', async () => {
-    const userList = await request(app.getHttpServer()).get('/test-app/users');
+    const userList = await request(app.getHttpServer()).get('/auth/auth-sessions');
     expect(userList.status).toBe(401);
   });
 
   it('should refresh access token', async () => {
-    const loginResponse = await request(app.getHttpServer()).post('/auth/signin').send({
+    const loginResponse = await request(app.getHttpServer()).post('/auth/login').send({
       email: 'john.doe@example.com',
       password: 'password',
     });
+    const cookieValues = getCookie(
+      loginResponse.headers['set-cookie'],
+      COOKIE_ATTR_JWT_FINGERPRINT.JWT,
+    );
 
-    type LoginResponseBody = {
-      data: {
-        sessionData: {
-          refreshToken: string;
-        };
-      };
-    };
-
-    const responseBody = loginResponse.body as LoginResponseBody;
-    expect(responseBody).toHaveProperty('data.sessionData.refreshToken');
-    const refreshToken = responseBody.data.sessionData.refreshToken;
+    const loginResBody = loginResponse.body as LoginResponseDto;
+    expect(loginResBody).toHaveProperty('data.sessionData.refreshToken');
+    const refreshToken = loginResBody.data.sessionData.refreshToken;
 
     const refreshResponse = await request(app.getHttpServer())
-      .post('/auth/auth-refresh')
-      .send({ refreshToken });
+      .get('/auth/auth-sessions')
+      .set('Authorization', `Bearer ${loginResBody.data.sessionData.accessToken}`)
+      .set('Cookie', cookieValues); // Set the cookie here
 
-    expect(refreshResponse.status).toBe(201);
-    expect(refreshResponse.body).toHaveProperty('accessToken');
+    const refreshResponseBody = refreshResponse.body as LoginResponseDto;
+    expect(refreshResponseBody).toHaveProperty('data.sessionData.accessToken');
+    expect(refreshResponseBody.data.sessionData.accessToken).not.toBe(refreshToken);
+    expect(refreshResponseBody.status).toBe(201);
+    expect(refreshResponseBody.data.sessionData).toHaveProperty('accessToken');
   });
 
   it('should fetch user sessions', async () => {
-    const loginResponse = await request(app.getHttpServer()).post('/auth/signin').send({
+    const loginResponse = await request(app.getHttpServer()).post('/auth/login').send({
       email: 'john.doe@example.com',
       password: 'password',
     });
 
-    type LoginResponseBody = {
-      data: {
-        sessionData: {
-          accessToken: string;
-        };
-      };
-    };
+    // Extract the cookie string from the set-cookie header
 
-    const responseBody = loginResponse.body as LoginResponseBody;
+    const cookieValue = getCookie(
+      loginResponse.headers['set-cookie'],
+      COOKIE_ATTR_JWT_FINGERPRINT.JWT,
+    );
+
+    const responseBody = loginResponse.body as LoginResponseDto;
     expect(responseBody).toHaveProperty('data.sessionData.accessToken');
     const accessToken = responseBody.data.sessionData.accessToken;
 
     const sessionsResponse = await request(app.getHttpServer())
       .get('/auth/auth-sessions')
-      .set('Authorization', `Bearer ${accessToken}`);
+      .set('Authorization', `Bearer ${accessToken}`)
+      .set('Cookie', cookieValue); // Set the cookie here
 
     expect(sessionsResponse.status).toBe(200);
     expect(sessionsResponse.body).toHaveProperty('data.loginData');
@@ -158,3 +166,22 @@ describe('AuthController (e2e)', () => {
     expect(sessionsResponse.body.data.loginData).toBeInstanceOf(Array);
   });
 });
+
+function getCookie(setCookieHeader: any, cookieName: string): string {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  const cookiesArray: string[] = Array.isArray(setCookieHeader)
+    ? setCookieHeader
+    : typeof setCookieHeader === 'string'
+      ? [setCookieHeader]
+      : [];
+
+  const cookie = cookiesArray.find((cookie) => cookie.startsWith(`${cookieName}=`));
+
+  const cookieValue = cookie ? cookie.split('=')[1].split(';')[0] : undefined;
+
+  if (!cookieValue) {
+    throw new Error('JWT cookie not found in login response');
+  }
+
+  return cookieValue;
+}

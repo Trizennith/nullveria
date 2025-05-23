@@ -10,6 +10,7 @@ import Generator from 'src/common/utils/generator';
 import { JwtStrategy } from '../../../src/api/auth/jwt.strategy';
 import { IncomingHttpHeaders } from 'http';
 import { JsonWebTokenError } from 'jsonwebtoken';
+import { COOKIE_ATTR_JWT_FINGERPRINT } from 'src/api/auth/constants/constant';
 
 class MockPrismaService {
   user = {
@@ -119,13 +120,19 @@ describe('JwtContextGuard', () => {
   });
 
   it('should throw UnauthorizedException if no token', () => {
-    const context = mockRequest({ authorization: 'Bearer ' }, { 'usr-ctx': jwtFingerPrint });
+    const context = mockRequest(
+      { authorization: 'Bearer ' },
+      { [COOKIE_ATTR_JWT_FINGERPRINT.JWT]: jwtFingerPrint },
+    );
 
     expect(() => guard.canActivate(context)).toThrow(UnauthorizedException);
   });
 
   it('should return false if no usr-ctx cookie or ctxHash', () => {
-    const context = mockRequest({ authorization: 'Bearer ' + jwtAccessToken }, { 'usr-ctx': '' });
+    const context = mockRequest(
+      { authorization: 'Bearer ' + jwtAccessToken },
+      { [COOKIE_ATTR_JWT_FINGERPRINT.JWT]: '' },
+    );
 
     expect(guard.canActivate(context)).toBe(false);
   });
@@ -133,7 +140,7 @@ describe('JwtContextGuard', () => {
   it('should return true if ctxHash matches cookie hash', () => {
     const context = mockRequest(
       { authorization: 'Bearer ' + jwtAccessToken },
-      { 'usr-ctx': jwtFingerPrint },
+      { [COOKIE_ATTR_JWT_FINGERPRINT.JWT]: jwtFingerPrint },
     );
 
     expect(guard.canActivate(context)).toBe(true);
@@ -146,7 +153,7 @@ describe('JwtContextGuard', () => {
 
     const context = mockRequest(
       { authorization: 'Bearer ' + tamperedJWT },
-      { 'usr-ctx': jwtFingerPrint },
+      { [COOKIE_ATTR_JWT_FINGERPRINT.JWT]: jwtFingerPrint },
     );
     console.log(jwtAccessToken);
 
@@ -157,7 +164,7 @@ describe('JwtContextGuard', () => {
     const malformedFingerPrint = '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08'; //hashed of string 'test'
     const context = mockRequest(
       { authorization: 'Bearer ' + jwtAccessToken },
-      { 'usr-ctx': malformedFingerPrint },
+      { [COOKIE_ATTR_JWT_FINGERPRINT.JWT]: malformedFingerPrint },
     );
 
     expect(guard.canActivate(context)).toBe(false);
