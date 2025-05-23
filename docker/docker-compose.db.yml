@@ -4,8 +4,8 @@ services:
     container_name: init-sql
     working_dir: /app
     volumes:
-      - ./init-sql:/app/init-sql
-      - ./.env:/app/.env
+      - ../init-sql:/app/init-sql
+      - ../.env:/app/.env
     environment:
       MYSQL_DATABASE_SHADOW: ${MYSQL_DATABASE_SHADOW}
       MYSQL_DATABASE: ${MYSQL_DATABASE}

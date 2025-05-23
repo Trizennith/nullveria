@@ -1,16 +1,19 @@
 import { PrismaClient } from '@prisma/client';
 import { authPasswordHasher } from '../../common/libs/hasher';
+import Generator from '../../common/utils/generator';
 
 const prisma = new PrismaClient();
 
 async function main() {
   // Seed Admin User
-  const adminUser = await prisma.user.create({
+  await prisma.user.create({
     data: {
+      userName: '43563456',
+      phoneNumber: '0952344325',
       firstName: 'Admin',
       lastName: 'User',
       fullName: 'Admin User',
-      email: 'admin@example.com',
+      email: 'realuser@example.com',
       password: await authPasswordHasher('admin_password'), // Replace with a hashed password
       role: 'admin',
       isActive: true,
@@ -22,6 +25,8 @@ async function main() {
   // Seed Regular User
   const regularUser = await prisma.user.create({
     data: {
+      userName: 'reilivy1234352',
+      phoneNumber: '43566435',
       firstName: 'John',
       lastName: 'Doe',
       fullName: 'John Doe',
@@ -35,8 +40,10 @@ async function main() {
   });
 
   // Seed Guest User
-  const guestUser = await prisma.user.create({
+  await prisma.user.create({
     data: {
+      userName: 'nullveria55',
+      phoneNumber: '3567',
       firstName: 'Guest',
       lastName: 'User',
       fullName: 'Guest User',
@@ -46,6 +53,39 @@ async function main() {
       isActive: true,
       isVerified: false,
       totalLogins: 0,
+    },
+  });
+
+  // Add a new user with a 'moderator' role
+  const moderatorUser = await prisma.user.create({
+    data: {
+      userName: 'moderator_user',
+      firstName: 'Moderator',
+      lastName: 'User',
+      fullName: 'Moderator User',
+      email: 'moderator@example.com',
+      password: await authPasswordHasher('moderator_password'), // Replace with a hashed password
+      role: 'moderator',
+      isActive: true,
+      isVerified: true,
+      totalLogins: 3,
+    },
+  });
+
+  // Add a new user with a 'developer' role
+  const developerUser = await prisma.user.create({
+    data: {
+      userName: 'developer_user',
+      phoneNumber: '1234567890',
+      firstName: 'Developer',
+      lastName: 'User',
+      fullName: 'Developer User',
+      email: 'developer@example.com',
+      password: await authPasswordHasher('developer_password'), // Replace with a hashed password
+      role: 'developer',
+      isActive: true,
+      isVerified: true,
+      totalLogins: 1,
     },
   });
 
@@ -62,29 +102,120 @@ async function main() {
     },
   });
 
-  // Seed UserSession for Regular User
+  // Seed User Session for Regular User
   await prisma.userSession.create({
     data: {
-      userId: regularUser.id,
-      refreshToken: 'sample_refresh_token',
-      refreshTokenExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-      ipAddress: '127.0.0.1',
+      userId: moderatorUser.id,
+      sessionId: Generator.generateUniqueID(),
+      refreshToken: {
+        create: {
+          fingerprint: Generator.generateUniqueID(),
+          hashedToken: Generator.generateUniqueID(),
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+          revoked: false,
+        },
+      },
+      ipAddress: '192.168.1.1',
       userAgent: 'Mozilla/5.0',
-      location: 'New York, USA',
-      additionalInfo: { metadata: 'Sample metadata' },
+      location: 'Los Angeles, USA',
+      additionalInfo: { metadata: 'Moderator metadata' },
     },
   });
 
-  // Seed UserSession for Admin User
+  // Seed User Session for Admin User
   await prisma.userSession.create({
     data: {
-      userId: adminUser.id,
-      refreshToken: 'admin_refresh_token',
-      refreshTokenExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-      ipAddress: '127.0.0.1',
+      userId: moderatorUser.id,
+      sessionId: Generator.generateUniqueID(),
+      refreshToken: {
+        create: {
+          fingerprint: Generator.generateUniqueID(),
+          hashedToken: Generator.generateUniqueID(),
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+          revoked: false,
+        },
+      },
+      ipAddress: '192.168.1.1',
       userAgent: 'Mozilla/5.0',
-      location: 'Admin Location',
-      additionalInfo: { metadata: 'Admin metadata' },
+      location: 'Los Angeles, USA',
+      additionalInfo: { metadata: 'Moderator metadata' },
+    },
+  });
+
+  // Seed User Address for Moderator User
+  await prisma.userAddress.create({
+    data: {
+      userId: moderatorUser.id,
+      address1: '456 Elm St',
+      address2: 'Suite 300',
+      city: 'Los Angeles',
+      state: 'CA',
+      postalCode: '90001',
+      country: 'USA',
+    },
+  });
+
+  // Seed User Session for Moderator User
+  await prisma.userSession.create({
+    data: {
+      userId: moderatorUser.id,
+      sessionId: Generator.generateUniqueID(),
+      refreshToken: {
+        create: {
+          fingerprint: Generator.generateUniqueID(),
+          hashedToken: Generator.generateUniqueID(),
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+          revoked: false,
+        },
+      },
+      ipAddress: '192.168.1.1',
+      userAgent: 'Mozilla/5.0',
+      location: 'Los Angeles, USA',
+      additionalInfo: { metadata: 'Moderator metadata' },
+    },
+  });
+
+  // Seed User Address for Developer User
+  await prisma.userAddress.create({
+    data: {
+      userId: developerUser.id,
+      address1: '789 Tech Lane',
+      address2: 'Suite 101',
+      city: 'San Francisco',
+      state: 'CA',
+      postalCode: '94103',
+      country: 'USA',
+    },
+  });
+
+  // Create RefreshToken for Developer User
+  await prisma.refreshToken.create({
+    data: {
+      userSessionID: developerUser.id, // Link to the user session
+      fingerprint: Generator.generateUniqueID(),
+      hashedToken: Generator.generateUniqueID(),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+      revoked: false,
+    },
+  });
+
+  // Seed User Session for Developer User
+  await prisma.userSession.create({
+    data: {
+      userId: moderatorUser.id,
+      sessionId: Generator.generateUniqueID(),
+      refreshToken: {
+        create: {
+          fingerprint: Generator.generateUniqueID(),
+          hashedToken: Generator.generateUniqueID(),
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+          revoked: false,
+        },
+      },
+      ipAddress: '192.168.1.1',
+      userAgent: 'Mozilla/5.0',
+      location: 'Los Angeles, USA',
+      additionalInfo: { metadata: 'Moderator metadata' },
     },
   });
 }
