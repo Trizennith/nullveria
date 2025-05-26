@@ -27,7 +27,8 @@ export class CatchEverythingFilter implements ExceptionFilter {
       responseBody = {
         status: {
           statusCode: httpStatus,
-          message: exception.message,
+          message:
+            process.env.IS_DEV_MODE === 'true' ? (exception as Error).stack : exception.message,
           timestamp: new Date().toISOString(),
         },
         path: httpAdapter.getRequestUrl(ctx.getRequest()) as string,

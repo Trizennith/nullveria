@@ -1,13 +1,13 @@
-import { JwtStatelessGuard } from '../../../src/api/auth/guards/auth.stateless.guard';
-import { AuthService } from '../../../src/api/auth/auth.service';
+import { JwtStatelessGuard } from '../../../src/api/auth/guards/jwt.stateless.guard';
+import { AuthService } from '../../../src/api/auth/services/auth.service';
 import { UnauthorizedException } from '@nestjs/common';
 import { ExecutionContext } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { PrismaService } from '../../../src/databases/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import Generator from 'src/common/utils/generator';
-import { JwtStrategy } from '../../../src/api/auth/jwt.strategy';
+import Generator from 'src/common/utils/Generator';
+import { JwtStrategy } from '../../../src/api/auth/services/jwt.service';
 import { IncomingHttpHeaders } from 'http';
 import { JsonWebTokenError } from 'jsonwebtoken';
 import { COOKIE_ATTR_JWT_FINGERPRINT } from 'src/api/auth/constants/constant';

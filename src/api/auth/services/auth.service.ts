@@ -1,20 +1,22 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { PrismaService } from '../../databases/prisma/prisma.service';
+import { PrismaService } from '../../../databases/prisma/prisma.service';
 import type { User } from '@prisma/client';
-import { JwtPayload, LoginDataDto } from './dto/auth-request.type'; // Import the JwtPayload type
+import { JwtPayload, LoginDataDto } from '../dto/auth-request.type'; // Import the JwtPayload type
 import { authPasswordHasher } from 'src/common/libs/hasher';
-import { AuthConstants } from './constants';
-import { LoginResultDto, UserSessionsResultDto, UserRoleTypes } from './dto/services.dto';
-import { ROLE } from './constants/constant';
-import Generator from 'src/common/utils/generator';
+import { AuthConstants } from '../constants';
+import { LoginResultDto, UserSessionsResultDto, UserRoleTypes } from '../dto/services.dto';
+import { ROLE } from '../constants/constant';
+import Generator from 'src/common/utils/Generator';
+import { JwtTokenRevoker } from './jwt.revoker.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService, // Use PrismaService
     private readonly jwtService: JwtService,
+    private readonly jwtRevoker: JwtTokenRevoker,
   ) {}
 
   async register(
@@ -40,10 +42,15 @@ export class AuthService {
     });
   }
 
-  private generateAccessToken(userID: string, userRole: UserRoleTypes): [string, string] {
+  private generateAccessToken(
+    userName: string,
+    sessionID: string,
+    userRole: UserRoleTypes,
+  ): [string, string] {
     const rawUserContextFingerPrint = Generator.generateUserContext();
     const payload: JwtPayload = {
-      userID,
+      sessionID,
+      userName,
       role: userRole,
       expInSeconds: Math.floor(Date.now() / 1000) + 60 * AuthConstants.ACCESS_TOKEN_EXPIRY_MINS,
       ctxHash: Generator.hash(rawUserContextFingerPrint),
@@ -63,14 +70,9 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const [accessToken, jwtRawContext] = this.generateAccessToken(
-      user.id.toString(),
-      user.role as UserRoleTypes,
-    );
     const refreshToken = Generator.generateUniqueID();
     const uniqueSessionID = Generator.generateUniqueID();
-
-    await this.prisma.userSession.create({
+    const newSession = await this.prisma.userSession.create({
       data: {
         userId: user.id,
         ipAddress: loginData.ipAddress,
@@ -88,6 +90,12 @@ export class AuthService {
         },
       },
     });
+
+    const [accessToken, jwtRawContext] = this.generateAccessToken(
+      user.userName.toString(),
+      newSession.sessionId.toString(),
+      user.role as UserRoleTypes,
+    );
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -150,7 +158,8 @@ export class AuthService {
     }
     const newRefreshToken = Generator.generateUniqueID();
     const [jwtAccessToken, rawUserContextFingerPrint] = this.generateAccessToken(
-      payload.userID,
+      payload.userName,
+      payload.sessionID,
       payload.role,
     );
 
@@ -177,9 +186,20 @@ export class AuthService {
     };
   }
 
-  async getSessions(userId_: string): Promise<UserSessionsResultDto> {
+  async getSessions(userName: string): Promise<UserSessionsResultDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { userName: userName },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
     const sessions = await this.prisma.userSession.findMany({
-      where: { userId: parseInt(userId_, 10) },
+      where: { userId: user.id },
       select: {
         id: true,
         loginTime: true,
@@ -209,37 +229,59 @@ export class AuthService {
       lastLoginAt: sessions[0]?.loginTime ?? null,
       loginCount: sessions.length,
       totalActiveLogin: sessions.filter((session) => !session.logoutTime).length,
-      loginData: sessions.map((session) => ({
-        id: session.id.toString(),
-        sessionId: session.id.toString(),
-        fingerprint: session.refreshToken!.fingerprint,
-        hashedToken: session.refreshToken!.hashedToken,
-        revoked: session.refreshToken!.revoked,
-        loginTime: session.loginTime,
-        logoutTime: session.logoutTime,
-        ipAddress: session.ipAddress,
-        userAgent: session.userAgent,
-        location: session.location,
-        metadata: session.additionalInfo,
-        createdAt: session.createdAt,
-        updatedAt: session.updatedAt,
-        expiresAt: session.refreshToken!.expiresAt,
-      })),
+      loginData: sessions.map((session) => {
+        return {
+          id: session.id.toString(),
+          sessionId: session.id.toString(),
+          fingerprint: session.refreshToken!.fingerprint,
+          hashedToken: session.refreshToken!.hashedToken,
+          revoked: session.refreshToken!.revoked,
+          loginTime: session.loginTime,
+          logoutTime: session.logoutTime,
+          ipAddress: session.ipAddress,
+          userAgent: session.userAgent,
+          location: session.location,
+          metadata: session.additionalInfo,
+          createdAt: session.createdAt,
+          updatedAt: session.updatedAt,
+          expiresAt: session.refreshToken!.expiresAt,
+        };
+      }),
     };
   }
 
-  async logout(username: string, sessionId: string): Promise<boolean> {
-    const userSession = await this.prisma.userSession.findUnique({
-      where: { id: parseInt(sessionId, 10) },
+  async logout(
+    userName: string,
+    sessionId: string,
+    jwtToken: string,
+    jwtExpiryInSeconds: number,
+  ): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      where: { userName: userName },
+      select: { id: true },
     });
 
-    if (!userSession || userSession.userId !== parseInt(username, 10)) {
-      throw new UnauthorizedException('Session not found or does not belong to the user');
+    if (!user) {
+      throw new UnauthorizedException('User not found');
     }
 
-    await this.prisma.userSession.delete({
-      where: { id: parseInt(sessionId, 10) },
+    const userSession = await this.prisma.userSession.findUnique({
+      where: { sessionId: sessionId, userId: user.id },
     });
+
+    if (!userSession) {
+      return true;
+    }
+
+    await this.prisma.refreshToken.deleteMany({
+      where: { userSessionID: userSession.id },
+    });
+
+    await this.prisma.userSession.delete({
+      where: { id: userSession.id },
+    });
+
+    await this.jwtRevoker.revokeToken(jwtToken, jwtExpiryInSeconds);
 
     return true;
   }

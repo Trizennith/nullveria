@@ -1,49 +1,49 @@
-
 name: nullveria-local-db
 services:
-  init-sql:
-    image: alpine:3.21
-    container_name: init.sql
-    working_dir: /app
-    volumes:
-      - ./init-sql:/app/init-sql
-      - .env:/app/.env
-    environment:
-      MYSQL_DATABASE_SHADOW: ${MYSQL_DATABASE_SHADOW}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-    entrypoint: >
-      sh -c "
-        echo $MYSQL_DATABASE_SHADOW &&
-        apk add --no-cache gettext mariadb-connector-c-dev mysql-client &&
+  # init-sql:
+  #   image: alpine:3.21
+  #   container_name: init.sql
+  #   working_dir: /app
+  #   volumes:
+  #     - ./init-sql:/app/init-sql
+  #     - .env:/app/.env
+  #   environment:
+  #     MYSQL_DATABASE_SHADOW: ${MYSQL_DATABASE_SHADOW}
+  #     MYSQL_DATABASE: ${MYSQL_DATABASE}
+  #     MYSQL_USER: ${MYSQL_USER}
+  #     MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+  #   entrypoint: >
+  #     sh -c "
+  #       echo $MYSQL_DATABASE_SHADOW &&
+  #       apk add --no-cache gettext mariadb-connector-c-dev mysql-client &&
 
-        until mysqladmin ping -h mysql -u root -p$MYSQL_ROOT_PASSWORD --skip-ssl --silent; do
-        echo 'Waiting for MySQL to be ready...';
-        sleep 2; done &&
+  #       until mysqladmin ping -h mysql -u root -p$MYSQL_ROOT_PASSWORD --skip-ssl --silent; do
+  #       echo 'Waiting for MySQL to be ready...';
+  #       sleep 2; done &&
 
-        chmod +x ./init-sql/generate-init-sql.sh &&
-        cd init-sql &&
-        . generate-init-sql.sh &&
-        cat init.sql &&
+  #       chmod +x ./init-sql/generate-init-sql.sh &&
+  #       cd init-sql &&
+  #       . generate-init-sql.sh &&
+  #       cat init.sql &&
 
-        mariadb -h mysql --user=root --password=$MYSQL_ROOT_PASSWORD --skip-ssl $MYSQL_DATABASE < /app/init-sql/init.sql &&
-        rm -rf /app/init-sql/init.sql
-        "
-    depends_on:
-      - mysql
+  #       mariadb -h mysql --user=root --password=$MYSQL_ROOT_PASSWORD --skip-ssl $MYSQL_DATABASE < /app/init-sql/init.sql &&
+  #       rm -rf /app/init-sql/init.sql
+  #       "
+  #   depends_on:
+  #     - mysql
+
   mysql:
     image: mysql:8.4 #😭Please do not upgrade this to 9.x.x,
-    container_name: nullveria.mysql.dev
+    container_name: nullveria.mysql.standalone
+    platform: linux/amd64
     restart: always
     ports:
-      - '3308:3306'
+      - '${MYSQL_PORT}:3306'
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-    command: ["mysqld", "--mysql-native-password=ON"]
+      MYSQL_DATABASE_SHADOW: nullveria_shadow
+    command: ['mysqld', '--mysql-native-password=ON']
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -51,6 +51,27 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - local_network
+
+  redis:
+    image: redis:8.0.1-alpine
+    container_name: nullveria.redis.standalone
+    restart: unless-stopped
+    ports:
+      - '${REDIS_PORT}:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - local_network
+    command: ['redis-server', '--requirepass', '${REDIS_PASSWORD}']
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
 
 volumes:
   mysql_data:
+  redis_data:
+
+networks:
+  local_network:
+    driver: bridge

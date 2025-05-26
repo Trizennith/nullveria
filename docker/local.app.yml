@@ -9,8 +9,8 @@ services:
       - '--providers.docker=true'
       - '--entrypoints.web.address=:80'
     ports:
-      - '80:80'
-      - '8080:8080' # Optional Traefik dashboard
+      - '8081:80'
+      - '8082:8080' # Optional Traefik dashboard
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
@@ -27,6 +27,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       IS_DEV_MODE: ${IS_DEV_MODE}
+      PORT: 3000
     labels:
       - 'traefik.enable=true'
       - 'traefik.http.routers.nestjs.rule=Host(`api.localhost`)'
@@ -34,6 +35,9 @@ services:
       - 'traefik.http.services.nestjs.loadbalancer.server.port=3000'
     depends_on:
       - mysql
+      - traefik
+      - redis
+    restart: unless-stopped
     networks:
       - local_network
 
@@ -57,6 +61,20 @@ services:
       retries: 3
     networks:
       - local_network
+
+    redis:
+      image: redis:8.0.1-alpine
+      container_name: nullveria.redis
+      restart: unless-stopped
+      ports:
+        - '${REDIS_PORT}:6379'
+      volumes:
+        - redis_data:/data
+      networks:
+        - local_network
+      command: ['redis-server', '--requirepass', '${REDIS_PASSWORD}']
+      environment:
+        REDIS_PASSWORD: ${REDIS_PASSWORD}
 
   prisma-migrate:
     image: node:20-alpine

@@ -9,7 +9,7 @@ import {
   Request,
   Response,
 } from '@nestjs/common';
-import { AuthService } from './auth.service';
+import { AuthService } from './services/auth.service';
 import { LoginDtoSchema, LoginDto } from './dto/request/login.dto';
 import { RefreshTokenDtoSchema } from './dto/request/refresh-token';
 import { LoginResponseDto } from './dto/response/login.dto';
@@ -17,10 +17,11 @@ import { AuthenticatedRequest } from './dto/auth-request.type'; // Import the cu
 import { Request as ExpressRequest, Response as ExpressResponse } from 'express'; // Import Express Request and Response types
 import { ZodError } from 'zod';
 import * as crypto from 'crypto';
-import { JwtStatelessGuard } from './guards/auth.stateless.guard';
+import { JwtStatelessGuard } from './guards/jwt.stateless.guard';
 import { UserSessionsResponseBody } from './dto/response/sessions-data';
 import { RegisterDto, RegisterDtoSchema } from './dto/request/signup.dto';
 import { COOKIE_ATTR_JWT_FINGERPRINT } from './constants/constant';
+import { JwtRevokeGuard } from './guards/jwt.revoked.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -119,48 +120,47 @@ export class AuthController {
   }
 
   @Get('auth-sessions')
-  @UseGuards(JwtStatelessGuard)
+  @UseGuards(JwtStatelessGuard, JwtRevokeGuard)
   async getSessions(@Req() req: AuthenticatedRequest): Promise<UserSessionsResponseBody> {
-    try {
-      const userId = req.user!.userID; // Access the userId from the JWT payload
+    const userName = req.user!.userName; // Access the userId from the JWT payload
 
-      if (!userId) {
-        throw new BadRequestException('Invalid or missing User ID in JWT');
-      }
-
-      const session = await this.authService.getSessions(userId);
-      return {
-        status: {
-          code: 200,
-          message: 'User sessions retrieved successfully',
-          description: 'User sessions retrieved successfully',
-        },
-        data: session,
-      };
-    } catch {
-      throw new BadRequestException('An error occurred while fetching sessions');
+    if (!userName) {
+      throw new BadRequestException('Invalid or missing User ID in JWT');
     }
+
+    const session = await this.authService.getSessions(userName);
+    return {
+      status: {
+        code: 200,
+        message: 'User sessions retrieved successfully',
+        description: 'User sessions retrieved successfully',
+      },
+      data: session,
+    };
   }
 
-  // @Get('auth-logout')
-  // @UseGuards(JwtContextGuard)
-  // async logout(@Req() req: AuthenticatedRequest): Promise<{ message: string }> {
-  //   try {
-  //     const userName = req.user!.userName; // Access the userId from the JWT payload
-  //     const logoutResult = await this.authService.logout(userName, sessionId);
-  //     console.log('Logout result:', logoutResult);
+  @Get('auth-logout')
+  @UseGuards(JwtStatelessGuard)
+  async logout(@Req() req: AuthenticatedRequest): Promise<{ message: string }> {
+    const userName = req.user!.userName;
+    const jwtToken = req.jwtToken!;
+    const jwtExpiryInSeconds = req.user!.expInSeconds;
 
-  //     if (logoutResult) {
-  //       return {
-  //         message: 'Logout successful',
-  //       };
-  //     } else {
-  //       throw new BadRequestException('Logout failed');
-  //     }
-  //   } catch {
-  //     throw new BadRequestException('An error occurred during logout');
-  //   }
-  // }
+    const logoutResult = await this.authService.logout(
+      userName,
+      req.user!.sessionID, // Assuming sessionId is part of the JWT payload
+      jwtToken,
+      jwtExpiryInSeconds,
+    );
+
+    if (logoutResult) {
+      return {
+        message: 'Logout successful',
+      };
+    } else {
+      throw new BadRequestException('Logout failed');
+    }
+  }
 
   @Post('auth-refresh')
   @UseGuards(JwtStatelessGuard)

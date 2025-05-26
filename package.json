@@ -29,6 +29,7 @@
     "db:reset": "sequelize db:migrate:undo"
   },
   "dependencies": {
+    "@nestjs/cache-manager": "^3.0.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
@@ -39,8 +40,11 @@
     "@prisma/client": "^6.5.0",
     "@types/jsonwebtoken": "^9.0.9",
     "bcrypt": "^5.1.1",
+    "cache-manager": "^6.4.3",
+    "cache-manager-redis-store": "^3.0.1",
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.7",
+    "ioredis": "^5.6.1",
     "mysql2": "^3.13.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",

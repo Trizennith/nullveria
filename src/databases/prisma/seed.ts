@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { authPasswordHasher } from '../../common/libs/hasher';
-import Generator from '../../common/utils/generator';
+import Generator from '../../common/utils/Generator';
 
 const prisma = new PrismaClient();
 
